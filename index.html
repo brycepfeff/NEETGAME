@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>NEET LIFE SIMULATOR | $NEET</title>
+<meta name="description" content="The official NEET Life Simulator. Do nothing. Get paid. $NEET on Solana.">
+<meta property="og:title" content="NEET LIFE SIMULATOR">
+<meta property="og:description" content="I scored {score} in NEET Life Simulator. Can you out-NEET me? 🛋️">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="NEET LIFE SIMULATOR | $NEET">
+<meta name="twitter:description" content="Do nothing. Get paid. The ultimate NEET experience.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --neet-black: #0a0a0a;
+  --neet-dark: #111111;
+  --neet-green: #00ff41;
+  --neet-green-dim: #00cc33;
+  --neet-green-glow: rgba(0, 255, 65, 0.3);
+  --neet-red: #ff3333;
+  --neet-yellow: #ffd700;
+  --neet-white: #e0e0e0;
+  --neet-gray: #333333;
+  --neet-mid-gray: #666;
+}
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: var(--neet-black);
+  font-family: 'Space Mono', monospace;
+  color: var(--neet-white);
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* SCANLINE OVERLAY */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.08) 2px,
+    rgba(0,0,0,0.08) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* SCREEN CONTAINER */
+#game {
+  width: 100%; height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ===== SCREENS ===== */
+.screen {
+  display: none;
+  width: 100%; height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  inset: 0;
+}
+.screen.active { display: flex; }
+
+/* ===== TITLE SCREEN ===== */
+#title-screen {
+  background: var(--neet-black);
+  text-align: center;
+  gap: 20px;
+  padding: 20px;
+}
+
+.title-logo {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(24px, 7vw, 56px);
+  color: var(--neet-green);
+  text-shadow:
+    0 0 20px var(--neet-green-glow),
+    0 0 60px var(--neet-green-glow);
+  animation: flicker 3s infinite;
+  line-height: 1.4;
+}
+
+.title-sub {
+  font-size: clamp(10px, 2.5vw, 16px);
+  color: var(--neet-mid-gray);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+}
+
+.title-tagline {
+  font-size: clamp(14px, 3.5vw, 22px);
+  color: var(--neet-green-dim);
+  margin-top: 10px;
+  font-style: italic;
+}
+
+.start-btn {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(12px, 3vw, 18px);
+  color: var(--neet-black);
+  background: var(--neet-green);
+  border: none;
+  padding: 16px 40px;
+  cursor: pointer;
+  margin-top: 20px;
+  transition: all 0.15s;
+  text-transform: uppercase;
+  box-shadow: 0 0 30px var(--neet-green-glow);
+}
+.start-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 50px var(--neet-green-glow);
+}
+.start-btn:active { transform: scale(0.97); }
+
+.title-links {
+  display: flex;
+  gap: 20px;
+  margin-top: 16px;
+}
+.title-links a {
+  color: var(--neet-mid-gray);
+  text-decoration: none;
+  font-size: 12px;
+  letter-spacing: 1px;
+  transition: color 0.2s;
+}
+.title-links a:hover { color: var(--neet-green); }
+
+/* ===== GAME SCREEN ===== */
+#game-screen {
+  background: var(--neet-dark);
+  padding: 0;
+}
+
+/* TOP HUD */
+.hud {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--neet-black);
+  border-bottom: 2px solid var(--neet-green);
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.hud-neet {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(12px, 3vw, 18px);
+  color: var(--neet-green);
+  text-shadow: 0 0 10px var(--neet-green-glow);
+}
+
+.hud-level {
+  font-size: 11px;
+  color: var(--neet-mid-gray);
+  text-align: right;
+  line-height: 1.5;
+}
+.hud-level span { color: var(--neet-yellow); }
+
+/* MIDDLE AREA */
+.game-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* THE COUCH / TAP ZONE */
+.tap-zone {
+  width: clamp(180px, 50vw, 280px);
+  height: clamp(180px, 50vw, 280px);
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 40%, #1a1a2e, #0a0a15);
+  border: 3px solid var(--neet-green);
+  box-shadow:
+    0 0 40px var(--neet-green-glow),
+    inset 0 0 30px rgba(0,255,65,0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+  position: relative;
+  flex-shrink: 0;
+}
+.tap-zone:active {
+  transform: scale(0.95);
+  box-shadow: 0 0 80px var(--neet-green-glow), inset 0 0 50px rgba(0,255,65,0.1);
+}
+
+.couch-emoji {
+  font-size: clamp(60px, 18vw, 100px);
+  filter: drop-shadow(0 0 20px var(--neet-green-glow));
+  transition: transform 0.1s;
+  pointer-events: none;
+}
+
+.tap-label {
+  position: absolute;
+  bottom: -30px;
+  font-size: 11px;
+  color: var(--neet-mid-gray);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  animation: pulse 2s infinite;
+}
+
+/* FLOATING NUMBERS */
+.float-num {
+  position: absolute;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 16px;
+  color: var(--neet-green);
+  text-shadow: 0 0 10px var(--neet-green-glow);
+  pointer-events: none;
+  animation: floatUp 1s ease-out forwards;
+  z-index: 20;
+}
+
+/* HAZARDS (job offers etc) */
+.hazard {
+  position: absolute;
+  font-size: clamp(28px, 8vw, 44px);
+  cursor: pointer;
+  z-index: 15;
+  animation: hazardFloat 4s linear forwards;
+  filter: drop-shadow(0 0 8px rgba(255,51,51,0.5));
+  transition: transform 0.1s;
+}
+.hazard:active { transform: scale(1.3); }
+
+/* STATUS BAR AREA */
+.status-area {
+  width: 100%;
+  padding: 10px 16px;
+  background: var(--neet-black);
+  border-top: 1px solid var(--neet-gray);
+  flex-shrink: 0;
+}
+
+.comfort-bar-wrap {
+  width: 100%;
+  margin-bottom: 6px;
+}
+.comfort-label {
+  font-size: 9px;
+  color: var(--neet-mid-gray);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.comfort-bar {
+  width: 100%;
+  height: 10px;
+  background: var(--neet-gray);
+  border-radius: 0;
+  overflow: hidden;
+}
+.comfort-fill {
+  height: 100%;
+  background: var(--neet-green);
+  box-shadow: 0 0 10px var(--neet-green-glow);
+  transition: width 0.3s;
+}
+
+.status-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--neet-mid-gray);
+  margin-top: 6px;
+}
+.status-row span { color: var(--neet-white); }
+
+/* UPGRADES PANEL */
+.upgrades-panel {
+  width: 100%;
+  padding: 8px 16px 12px;
+  background: var(--neet-black);
+  border-top: 2px solid var(--neet-green);
+  flex-shrink: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+}
+
+.upgrade-btn {
+  display: inline-block;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: var(--neet-green);
+  background: transparent;
+  border: 1px solid var(--neet-green);
+  padding: 8px 14px;
+  margin-right: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  vertical-align: top;
+}
+.upgrade-btn:hover {
+  background: var(--neet-green);
+  color: var(--neet-black);
+}
+.upgrade-btn:disabled {
+  border-color: var(--neet-gray);
+  color: var(--neet-gray);
+  cursor: not-allowed;
+}
+.upgrade-btn:disabled:hover {
+  background: transparent;
+  color: var(--neet-gray);
+}
+.upgrade-cost {
+  display: block;
+  font-size: 8px;
+  color: var(--neet-yellow);
+  margin-top: 2px;
+}
+
+/* TOAST MESSAGES */
+.toast {
+  position: fixed;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(9px, 2.2vw, 12px);
+  padding: 10px 20px;
+  z-index: 100;
+  animation: toastIn 0.3s, toastOut 0.3s 2s forwards;
+  text-align: center;
+  max-width: 90vw;
+  white-space: nowrap;
+}
+.toast-danger {
+  background: var(--neet-red);
+  color: white;
+  box-shadow: 0 0 30px rgba(255,51,51,0.4);
+}
+.toast-success {
+  background: var(--neet-green);
+  color: var(--neet-black);
+  box-shadow: 0 0 30px var(--neet-green-glow);
+}
+
+/* ===== GAME OVER ===== */
+#gameover-screen {
+  background: var(--neet-black);
+  text-align: center;
+  gap: 16px;
+  padding: 30px;
+}
+
+.go-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(18px, 5vw, 36px);
+  color: var(--neet-red);
+  text-shadow: 0 0 30px rgba(255,51,51,0.5);
+}
+
+.go-reason {
+  font-size: clamp(12px, 3vw, 16px);
+  color: var(--neet-mid-gray);
+  max-width: 400px;
+}
+
+.go-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 10px 0;
+}
+.go-stat {
+  font-size: 13px;
+  color: var(--neet-white);
+}
+.go-stat b { color: var(--neet-green); }
+
+.share-btn {
+  font-family: 'Space Mono', monospace;
+  font-size: 13px;
+  color: var(--neet-black);
+  background: var(--neet-green);
+  border: none;
+  padding: 14px 28px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: all 0.15s;
+  text-transform: uppercase;
+}
+.share-btn:hover { box-shadow: 0 0 30px var(--neet-green-glow); }
+
+.restart-btn {
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  color: var(--neet-green);
+  background: transparent;
+  border: 1px solid var(--neet-green);
+  padding: 10px 24px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.restart-btn:hover {
+  background: var(--neet-green);
+  color: var(--neet-black);
+}
+
+.neet-link {
+  color: var(--neet-mid-gray);
+  font-size: 11px;
+  text-decoration: none;
+  margin-top: 10px;
+  transition: color 0.2s;
+}
+.neet-link:hover { color: var(--neet-green); }
+
+/* ===== SCROLLING MARQUEE ===== */
+.marquee-bar {
+  width: 100%;
+  overflow: hidden;
+  background: var(--neet-green);
+  color: var(--neet-black);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  padding: 4px 0;
+  flex-shrink: 0;
+}
+.marquee-inner {
+  display: inline-block;
+  white-space: nowrap;
+  animation: marquee 20s linear infinite;
+}
+
+/* ===== ANIMATIONS ===== */
+@keyframes flicker {
+  0%, 100% { opacity: 1; }
+  92% { opacity: 1; }
+  93% { opacity: 0.7; }
+  94% { opacity: 1; }
+  96% { opacity: 0.8; }
+  97% { opacity: 1; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+@keyframes floatUp {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-80px) scale(1.3); }
+}
+
+@keyframes hazardFloat {
+  0% { opacity: 0; }
+  5% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+@keyframes toastOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes screenShake {
+  0%, 100% { transform: translate(0); }
+  25% { transform: translate(-3px, 2px); }
+  50% { transform: translate(3px, -2px); }
+  75% { transform: translate(-2px, -3px); }
+}
+
+.shake { animation: screenShake 0.3s ease; }
+</style>
+</head>
+<body>
+<div id="game">
+
+  <!-- ===== TITLE ===== -->
+  <div id="title-screen" class="screen active">
+    <div class="title-sub">Welcome to the</div>
+    <div class="title-logo">NEET LIFE<br>SIMULATOR</div>
+    <div class="title-tagline">"Do nothing. Get paid."</div>
+    <button class="start-btn" onclick="startGame()">▶ START NEETING</button>
+    <div class="title-links">
+      <a href="https://x.com/neet_sol" target="_blank">𝕏 @neet_sol</a>
+      <a href="https://neetcoin.xyz/" target="_blank">neetcoin.xyz</a>
+    </div>
+  </div>
+
+  <!-- ===== GAME ===== -->
+  <div id="game-screen" class="screen">
+    <div class="marquee-bar">
+      <div class="marquee-inner" id="marquee-text"></div>
+    </div>
+
+    <div class="hud">
+      <div class="hud-neet">$<span id="neet-count">0</span></div>
+      <div class="hud-level">LVL <span id="level-num">1</span><br><span id="level-title">Couch Potato</span></div>
+    </div>
+
+    <div class="game-area" id="game-area">
+      <div class="tap-zone" id="tap-zone" ontouchstart="onTap(event)" onmousedown="onTap(event)">
+        <div class="couch-emoji" id="couch-emoji">🛋️</div>
+        <div class="tap-label">TAP TO DO NOTHING</div>
+      </div>
+    </div>
+
+    <div class="status-area">
+      <div class="comfort-bar-wrap">
+        <div class="comfort-label">COMFORT LEVEL</div>
+        <div class="comfort-bar"><div class="comfort-fill" id="comfort-fill" style="width:100%"></div></div>
+      </div>
+      <div class="status-row">
+        <span>NEET/tap: <span id="per-tap">1</span></span>
+        <span>Passive: <span id="per-sec">0</span>/s</span>
+        <span>Dodged: <span id="dodged-count">0</span></span>
+      </div>
+    </div>
+
+    <div class="upgrades-panel" id="upgrades-panel"></div>
+  </div>
+
+  <!-- ===== GAME OVER ===== -->
+  <div id="gameover-screen" class="screen">
+    <div class="go-title">GAME OVER</div>
+    <div class="go-reason" id="go-reason">You accidentally got a job.</div>
+    <div class="go-stats">
+      <div class="go-stat">$NEET earned: <b id="go-neet">0</b></div>
+      <div class="go-stat">Level reached: <b id="go-level">1</b></div>
+      <div class="go-stat">Jobs dodged: <b id="go-dodged">0</b></div>
+      <div class="go-stat">Time wasted: <b id="go-time">0s</b></div>
+    </div>
+    <button class="share-btn" onclick="shareScore()">📱 SHARE ON 𝕏</button>
+    <button class="restart-btn" onclick="startGame()">↻ TRY AGAIN</button>
+    <a class="neet-link" href="https://neetcoin.xyz/" target="_blank">BUY $NEET → neetcoin.xyz</a>
+  </div>
+
+</div>
+
+<script>
+// ===== GAME STATE =====
+let state = {};
+
+const LEVELS = [
+  { neet: 0, title: "Couch Potato", emoji: "🛋️" },
+  { neet: 50, title: "Remote Lounger", emoji: "🛋️" },
+  { neet: 200, title: "Snack Connoisseur", emoji: "🍕" },
+  { neet: 500, title: "Algorithm Expert", emoji: "📱" },
+  { neet: 1200, title: "Pajama CEO", emoji: "👔" },
+  { neet: 3000, title: "Professional Procrastinator", emoji: "😴" },
+  { neet: 7000, title: "Couch Philosopher", emoji: "🧠" },
+  { neet: 15000, title: "Unemployment Sensei", emoji: "🥋" },
+  { neet: 35000, title: "NEET World Order General", emoji: "🌍" },
+  { neet: 80000, title: "Transcendent NEET", emoji: "👁️" },
+  { neet: 200000, title: "NEET God", emoji: "⚡" },
+];
+
+const UPGRADES = [
+  { id: "pillow", name: "Extra Pillow", desc: "+1/tap", cost: 25, type: "tap", val: 1 },
+  { id: "blanket", name: "Weighted Blanket", desc: "+2/tap", cost: 100, type: "tap", val: 2 },
+  { id: "wifi", name: "Faster WiFi", desc: "+1/s passive", cost: 75, type: "passive", val: 1 },
+  { id: "fridge", name: "Mini Fridge", desc: "+3/s passive", cost: 250, type: "passive", val: 3 },
+  { id: "gaming", name: "Gaming Rig", desc: "+5/tap", cost: 400, type: "tap", val: 5 },
+  { id: "vpn", name: "VPN Shield", desc: "Slow hazards", cost: 600, type: "special", val: "slow" },
+  { id: "neetcave", name: "NEET Cave", desc: "+10/s passive", cost: 1500, type: "passive", val: 10 },
+  { id: "staking", name: "Stake $NEET", desc: "+25/s passive", cost: 5000, type: "passive", val: 25 },
+  { id: "protest", name: "Wall St Protest", desc: "+15/tap", cost: 8000, type: "tap", val: 15 },
+  { id: "nwo", name: "NEET World Order", desc: "+100/s passive", cost: 25000, type: "passive", val: 100 },
+];
+
+const HAZARDS = [
+  { emoji: "💼", label: "JOB OFFER" },
+  { emoji: "⏰", label: "ALARM CLOCK" },
+  { emoji: "👔", label: "INTERVIEW" },
+  { emoji: "📋", label: "RESUME" },
+  { emoji: "🏢", label: "OFFICE" },
+  { emoji: "📧", label: "RECRUITER EMAIL" },
+  { emoji: "👨‍💼", label: "LINKEDIN" },
+  { emoji: "🎓", label: "DIPLOMA" },
+];
+
+const GAME_OVER_REASONS = [
+  "You accidentally replied to a recruiter on LinkedIn.",
+  "Your mom signed you up for a job fair.",
+  "You were hired against your will.",
+  "You showed up to a meeting by mistake.",
+  "A 9-to-5 found you. The grind never stops.",
+  "You updated your resume in your sleep.",
+  "You accidentally said 'synergy' out loud.",
+  "An alarm clock infiltrated your NEET cave.",
+];
+
+const MARQUEE_MSGS = [
+  "NEET WORLD ORDER",
+  "DO NOTHING GET PAID",
+  "$NEET ON SOLANA",
+  "REJECT EMPLOYMENT",
+  "STAKE AND CHILL",
+  "WE BOUGHT A COIN AND NEVER WORKED AGAIN",
+];
+
+// ===== INIT =====
+function initState() {
+  return {
+    neet: 0,
+    totalNeet: 0,
+    perTap: 1,
+    perSec: 0,
+    comfort: 100,
+    level: 0,
+    dodged: 0,
+    missed: 0,
+    startTime: Date.now(),
+    purchased: new Set(),
+    hazardSpeed: 1,
+    alive: true,
+    hazardInterval: null,
+    passiveInterval: null,
+    comfortInterval: null,
+  };
+}
+
+function startGame() {
+  // cleanup old intervals
+  if (state.hazardInterval) clearInterval(state.hazardInterval);
+  if (state.passiveInterval) clearInterval(state.passiveInterval);
+  if (state.comfortInterval) clearInterval(state.comfortInterval);
+
+  state = initState();
+  showScreen('game-screen');
+  updateHUD();
+  renderUpgrades();
+  setupMarquee();
+
+  // clear old hazards
+  document.querySelectorAll('.hazard').forEach(h => h.remove());
+
+  // passive income
+  state.passiveInterval = setInterval(() => {
+    if (!state.alive) return;
+    if (state.perSec > 0) {
+      state.neet += state.perSec;
+      state.totalNeet += state.perSec;
+      updateHUD();
+    }
+  }, 1000);
+
+  // comfort drain
+  state.comfortInterval = setInterval(() => {
+    if (!state.alive) return;
+    state.comfort = Math.max(0, state.comfort - 0.5);
+    updateComfort();
+    if (state.comfort <= 0) gameOver();
+  }, 1000);
+
+  // spawn hazards
+  state.hazardInterval = setInterval(() => {
+    if (!state.alive) return;
+    spawnHazard();
+  }, 3500);
+}
+
+// ===== SCREENS =====
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ===== TAP =====
+function onTap(e) {
+  e.preventDefault();
+  if (!state.alive) return;
+
+  state.neet += state.perTap;
+  state.totalNeet += state.perTap;
+
+  // comfort boost on tap
+  state.comfort = Math.min(100, state.comfort + 0.8);
+
+  // float number
+  const area = document.getElementById('game-area');
+  const rect = area.getBoundingClientRect();
+  let x, y;
+  if (e.touches) {
+    x = e.touches[0].clientX - rect.left;
+    y = e.touches[0].clientY - rect.top;
+  } else {
+    x = e.clientX - rect.left;
+    y = e.clientY - rect.top;
+  }
+  spawnFloat(x, y, `+${state.perTap}`);
+
+  // animate couch
+  const couch = document.getElementById('couch-emoji');
+  couch.style.transform = 'scale(1.15)';
+  setTimeout(() => couch.style.transform = 'scale(1)', 100);
+
+  updateHUD();
+}
+
+function spawnFloat(x, y, text) {
+  const el = document.createElement('div');
+  el.className = 'float-num';
+  el.textContent = text;
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
+  document.getElementById('game-area').appendChild(el);
+  setTimeout(() => el.remove(), 1000);
+}
+
+// ===== HAZARDS =====
+function spawnHazard() {
+  const area = document.getElementById('game-area');
+  const rect = area.getBoundingClientRect();
+  const h = HAZARDS[Math.floor(Math.random() * HAZARDS.length)];
+
+  const el = document.createElement('div');
+  el.className = 'hazard';
+  el.textContent = h.emoji;
+  el.title = h.label;
+
+  // random position along edges
+  const side = Math.floor(Math.random() * 4);
+  const w = rect.width;
+  const ht = rect.height;
+  let startX, startY, endX, endY;
+
+  if (side === 0) { startX = Math.random() * w; startY = -50; }
+  else if (side === 1) { startX = w + 50; startY = Math.random() * ht; }
+  else if (side === 2) { startX = Math.random() * w; startY = ht + 50; }
+  else { startX = -50; startY = Math.random() * ht; }
+
+  endX = w / 2 + (Math.random() - 0.5) * 100;
+  endY = ht / 2 + (Math.random() - 0.5) * 100;
+
+  el.style.left = startX + 'px';
+  el.style.top = startY + 'px';
+
+  const dur = (4000 / state.hazardSpeed);
+  el.style.animationDuration = dur + 'ms';
+
+  // animate toward center
+  let start = null;
+  function move(ts) {
+    if (!start) start = ts;
+    const p = Math.min((ts - start) / dur, 1);
+    const cx = startX + (endX - startX) * p;
+    const cy = startY + (endY - startY) * p;
+    el.style.left = cx + 'px';
+    el.style.top = cy + 'px';
+
+    if (p < 1 && el.parentNode) {
+      requestAnimationFrame(move);
+    } else if (el.parentNode) {
+      // missed — comfort penalty
+      state.comfort = Math.max(0, state.comfort - 15);
+      state.missed++;
+      updateComfort();
+      showToast(`${h.emoji} ${h.label} HIT YOU! -15 comfort`, 'danger');
+      document.getElementById('game-screen').classList.add('shake');
+      setTimeout(() => document.getElementById('game-screen').classList.remove('shake'), 300);
+      el.remove();
+      if (state.comfort <= 0) gameOver();
+    }
+  }
+
+  // tap to dodge
+  el.addEventListener('touchstart', (e) => { e.preventDefault(); dodgeHazard(el, h); }, { passive: false });
+  el.addEventListener('mousedown', (e) => { e.preventDefault(); dodgeHazard(el, h); });
+
+  area.appendChild(el);
+  requestAnimationFrame(move);
+}
+
+function dodgeHazard(el, h) {
+  if (!el.parentNode) return;
+  state.dodged++;
+  const bonus = 5 + state.level * 2;
+  state.neet += bonus;
+  state.totalNeet += bonus;
+  state.comfort = Math.min(100, state.comfort + 5);
+
+  const rect = el.getBoundingClientRect();
+  const areaRect = document.getElementById('game-area').getBoundingClientRect();
+  spawnFloat(rect.left - areaRect.left, rect.top - areaRect.top, `+${bonus} DODGED!`);
+
+  showToast(`${h.emoji} ${h.label} REJECTED! +${bonus} $NEET`, 'success');
+  el.remove();
+  updateHUD();
+}
+
+// ===== UPGRADES =====
+function renderUpgrades() {
+  const panel = document.getElementById('upgrades-panel');
+  panel.innerHTML = '';
+  UPGRADES.forEach(u => {
+    if (state.purchased.has(u.id)) return;
+    const btn = document.createElement('button');
+    btn.className = 'upgrade-btn';
+    btn.innerHTML = `${u.name}<br><small>${u.desc}</small><span class="upgrade-cost">${u.cost} $NEET</span>`;
+    btn.disabled = state.neet < u.cost;
+    btn.onclick = () => buyUpgrade(u);
+    panel.appendChild(btn);
+  });
+}
+
+function buyUpgrade(u) {
+  if (state.neet < u.cost || state.purchased.has(u.id)) return;
+  state.neet -= u.cost;
+  state.purchased.add(u.id);
+
+  if (u.type === 'tap') state.perTap += u.val;
+  else if (u.type === 'passive') state.perSec += u.val;
+  else if (u.type === 'special' && u.val === 'slow') state.hazardSpeed = 0.6;
+
+  showToast(`✓ ${u.name} UNLOCKED`, 'success');
+  updateHUD();
+  renderUpgrades();
+}
+
+// ===== HUD =====
+function updateHUD() {
+  document.getElementById('neet-count').textContent = formatNum(Math.floor(state.neet));
+  document.getElementById('per-tap').textContent = state.perTap;
+  document.getElementById('per-sec').textContent = state.perSec;
+  document.getElementById('dodged-count').textContent = state.dodged;
+
+  // level check
+  let newLevel = 0;
+  for (let i = LEVELS.length - 1; i >= 0; i--) {
+    if (state.totalNeet >= LEVELS[i].neet) { newLevel = i; break; }
+  }
+  if (newLevel !== state.level) {
+    state.level = newLevel;
+    document.getElementById('couch-emoji').textContent = LEVELS[newLevel].emoji;
+    showToast(`⬆ LEVEL ${newLevel + 1}: ${LEVELS[newLevel].title}`, 'success');
+  }
+  document.getElementById('level-num').textContent = state.level + 1;
+  document.getElementById('level-title').textContent = LEVELS[state.level].title;
+
+  // re-check upgrade affordability
+  document.querySelectorAll('.upgrade-btn').forEach((btn, i) => {
+    const available = UPGRADES.filter(u => !state.purchased.has(u.id));
+    if (available[i]) btn.disabled = state.neet < available[i].cost;
+  });
+}
+
+function updateComfort() {
+  const fill = document.getElementById('comfort-fill');
+  if (!fill) return;
+  fill.style.width = state.comfort + '%';
+  if (state.comfort < 30) {
+    fill.style.background = 'var(--neet-red)';
+    fill.style.boxShadow = '0 0 10px rgba(255,51,51,0.5)';
+  } else if (state.comfort < 60) {
+    fill.style.background = 'var(--neet-yellow)';
+    fill.style.boxShadow = '0 0 10px rgba(255,215,0,0.3)';
+  } else {
+    fill.style.background = 'var(--neet-green)';
+    fill.style.boxShadow = '0 0 10px var(--neet-green-glow)';
+  }
+}
+
+// ===== GAME OVER =====
+function gameOver() {
+  state.alive = false;
+  clearInterval(state.hazardInterval);
+  clearInterval(state.passiveInterval);
+  clearInterval(state.comfortInterval);
+
+  const elapsed = Math.floor((Date.now() - state.startTime) / 1000);
+  const mins = Math.floor(elapsed / 60);
+  const secs = elapsed % 60;
+
+  document.getElementById('go-reason').textContent =
+    GAME_OVER_REASONS[Math.floor(Math.random() * GAME_OVER_REASONS.length)];
+  document.getElementById('go-neet').textContent = formatNum(Math.floor(state.totalNeet));
+  document.getElementById('go-level').textContent = (state.level + 1) + ' — ' + LEVELS[state.level].title;
+  document.getElementById('go-dodged').textContent = state.dodged;
+  document.getElementById('go-time').textContent = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+
+  showScreen('gameover-screen');
+}
+
+// ===== SHARE =====
+function shareScore() {
+  const elapsed = Math.floor((Date.now() - state.startTime) / 1000);
+  const text = `🛋️ NEET LIFE SIMULATOR
+
+💰 ${formatNum(Math.floor(state.totalNeet))} $NEET earned
+⭐ Level ${state.level + 1}: ${LEVELS[state.level].title}
+🚫 ${state.dodged} jobs dodged
+⏱️ ${Math.floor(elapsed / 60)}m ${elapsed % 60}s of doing nothing
+
+Do nothing. Get paid. Can you out-NEET me?
+
+Play → neetcoin.xyz
+@neet_sol | $NEET`;
+
+  const url = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}`;
+  window.open(url, '_blank');
+}
+
+// ===== UTILITIES =====
+function formatNum(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+  return n.toString();
+}
+
+function showToast(msg, type) {
+  // remove existing toasts
+  document.querySelectorAll('.toast').forEach(t => t.remove());
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
+}
+
+function setupMarquee() {
+  const text = MARQUEE_MSGS.map(m => `  ★  ${m}`).join('');
+  document.getElementById('marquee-text').textContent = text + text;
+}
+</script>
+</body>
+</html>
